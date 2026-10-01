@@ -1,0 +1,858 @@
+<!DOCTYPE html>
+<html lang="zh-HK">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>/-m/及/-n/尾音大挑戰</title>
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Google Fonts -->
+  <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@700;900&family=Noto+Sans+TC:wght@700;900&display=swap" rel="stylesheet">
+  
+  <style>
+    * {
+      box-sizing: border-box;
+      user-select: none;
+      -webkit-user-select: none;
+    }
+    body {
+      margin: 0;
+      font-family: 'Nunito', 'Noto Sans TC', sans-serif;
+      background: linear-gradient(135deg, #ffde59 0%, #ff914d 100%);
+      color: #173858;
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+    .game-shell {
+      width: 100%;
+      max-width: 1000px;
+      margin: 0 auto;
+      padding: 12px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+    .arena {
+      position: relative;
+      width: 100%;
+      height: 480px;
+      border: 5px solid #173858;
+      border-radius: 28px;
+      background: linear-gradient(180deg, #80dcff 0%, #dcf9ff 70%, #a9df60 70%, #71ba44 100%);
+      box-shadow: 0 10px 0 #173858;
+      overflow: hidden;
+      touch-action: none;
+    }
+    .cloud {
+      position: absolute;
+      font-size: 80px;
+      opacity: 0.7;
+      pointer-events: none;
+    }
+    #basket {
+      position: absolute;
+      bottom: 12px;
+      left: 50%;
+      transform: translateX(-50%);
+      font-size: 72px;
+      width: 90px;
+      text-align: center;
+      line-height: 1;
+      pointer-events: none;
+      transition: transform 0.05s ease-out;
+    }
+    .falling-item {
+      position: absolute;
+      font-size: 46px;
+      line-height: 1;
+      width: 50px;
+      text-align: center;
+      pointer-events: none;
+    }
+    .blast {
+      animation: shake 0.4s ease-in-out;
+    }
+    @keyframes shake {
+      0%, 100% { transform: translateX(0); }
+      20%, 60% { transform: translateX(-8px); }
+      40%, 80% { transform: translateX(8px); }
+    }
+    .pop-anim {
+      animation: pop 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    }
+    @keyframes pop {
+      0% { transform: scale(0.5); opacity: 0; }
+      100% { transform: scale(1); opacity: 1; }
+    }
+    .overlay {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: rgba(220, 249, 255, 0.95);
+      padding: 20px;
+      z-index: 20;
+    }
+    .word-card {
+      border: 4px solid #173858;
+      border-radius: 24px;
+      background: #ffd34f;
+      color: #173858;
+      min-height: 200px;
+      width: 200px;
+      box-shadow: 0 8px 0 #173858;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      transition: transform 0.15s, background-color 0.2s;
+      cursor: pointer;
+    }
+    .word-card.n-card {
+      background: #ff96b5;
+    }
+    .word-card:active:not(:disabled) {
+      transform: translateY(4px);
+      box-shadow: 0 4px 0 #173858;
+    }
+    .word-card:disabled {
+      cursor: default;
+    }
+    .progress-emoji {
+      font-size: 32px;
+      filter: grayscale(100%);
+      opacity: 0.3;
+      transition: all 0.3s ease;
+    }
+    .progress-emoji.active {
+      filter: grayscale(0%);
+      opacity: 1;
+      transform: scale(1.2);
+    }
+    .btn-action {
+      border: 4px solid #173858;
+      border-radius: 20px;
+      padding: 12px 28px;
+      box-shadow: 0 6px 0 #173858;
+      font-size: 26px;
+      font-weight: 900;
+      transition: transform 0.1s;
+    }
+    .btn-action:active {
+      transform: translateY(4px);
+      box-shadow: 0 2px 0 #173858;
+    }
+  </style>
+</head>
+<body>
+
+  <main class="game-shell">
+    <!-- Header Controls & Status -->
+    <header class="w-full text-center mb-3">
+      <h1 class="text-3xl sm:text-4xl font-black text-[#173858] mb-2 tracking-wide">/-m/及/-n/尾音大挑戰</h1>
+      
+      <div class="flex flex-wrap items-center justify-center gap-3 text-lg font-black">
+        <!-- Round Progress -->
+        <div class="bg-white border-3 border-[#173858] rounded-2xl px-4 py-1.5 shadow-[0_4px_0_#173858] border-3 flex items-center gap-1">
+          <span>🎃</span> <span id="round-disp">1 / 10</span>
+        </div>
+        
+        <!-- Score -->
+        <div class="bg-white border-3 border-[#173858] rounded-2xl px-4 py-1.5 shadow-[0_4px_0_#173858] border-3 flex items-center gap-1">
+          <span>⭐</span> <span id="score-disp">0</span>
+        </div>
+        
+        <!-- Hearts -->
+        <div id="lives-disp" class="bg-white border-3 border-[#173858] rounded-2xl px-4 py-1.5 shadow-[0_4px_0_#173858] border-3">
+          ❤️❤️❤️
+        </div>
+        
+        <!-- Sound Toggle -->
+        <button id="btn-music" class="bg-white border-3 border-[#173858] rounded-2xl p-2 min-w-[48px] shadow-[0_4px_0_#173858] text-xl" aria-label="切換音效">
+          🎵
+        </button>
+        
+        <!-- Pause Button -->
+        <button id="btn-pause" class="bg-white border-3 border-[#173858] rounded-2xl px-4 py-1.5 shadow-[0_4px_0_#173858] font-black text-lg text-[#173858]">
+          暫停遊戲
+        </button>
+      </div>
+    </header>
+
+    <!-- Game Arena Area -->
+    <section id="arena" class="arena">
+      <div class="cloud left-[5%] top-[15px]">☁️</div>
+      <div class="cloud right-[8%] top-[50px]">☁️</div>
+
+      <!-- Target Banner -->
+      <div id="target-banner" class="absolute top-3 left-1/2 -translate-x-1/2 bg-white border-3 border-[#173858] rounded-2xl px-5 py-2 shadow-[0_4px_0_#173858] font-black text-xl z-10 flex items-center gap-3">
+        <span>接住 2 個南瓜</span>
+        <div id="harvest-slots" class="flex gap-2 text-2xl">
+          <span class="opacity-30 grayscale">🎃</span>
+          <span class="opacity-30 grayscale">🎃</span>
+        </div>
+      </div>
+
+      <!-- Play Area -->
+      <div id="field" class="absolute inset-0"></div>
+
+      <!-- Basket -->
+      <div id="basket">🧺</div>
+
+      <!-- Floating Feedback Toast -->
+      <div id="toast-good" class="hidden absolute top-24 left-1/2 -translate-x-1/2 bg-[#4cdb93] text-white w-20 h-20 rounded-full flex items-center justify-center text-5xl font-black z-30 shadow-lg border-4 border-[#173858] pop-anim">
+        ✔
+      </div>
+      <div id="toast-bad" class="hidden absolute top-24 left-1/2 -translate-x-1/2 bg-[#ff4d4d] text-white w-20 h-20 rounded-full flex items-center justify-center text-4xl font-black z-30 shadow-lg border-4 border-[#173858] pop-anim">
+        ❌
+      </div>
+
+      <!-- Combo Bonus Floating Badge -->
+      <div id="toast-bonus" class="hidden absolute top-5 right-5 bg-[#fff19a] text-[#713b00] px-4 py-2 rounded-2xl text-xl font-black z-30 border-3 border-[#173858] pop-anim shadow-md">
+        ⭐ +150 BONUS!
+      </div>
+
+      <!-- Overlay 1: Start Game -->
+      <div id="overlay-start" class="overlay">
+        <div class="flex flex-col items-center gap-6 bg-white/90 p-8 rounded-3xl border-4 border-[#173858] shadow-[0_10px_0_#173858] backdrop-blur-sm max-w-[90%] text-center">
+          <h2 class="text-2xl sm:text-3xl font-black text-[#173858] mb-2">請選擇遊戲回合數</h2>
+          <div class="flex flex-wrap justify-center gap-4">
+            <button id="btn-round-3" class="bg-[#4cdb93] text-[#173858] border-4 border-[#173858] rounded-2xl px-5 py-2 text-xl font-black shadow-[0_4px_0_#173858] opacity-50 transition-all active:translate-y-1">3 回合</button>
+            <button id="btn-round-5" class="bg-[#4cdb93] text-[#173858] border-4 border-[#173858] rounded-2xl px-5 py-2 text-xl font-black shadow-[0_4px_0_#173858] scale-110 transition-all active:translate-y-1">5 回合</button>
+            <button id="btn-round-8" class="bg-[#4cdb93] text-[#173858] border-4 border-[#173858] rounded-2xl px-5 py-2 text-xl font-black shadow-[0_4px_0_#173858] opacity-50 transition-all active:translate-y-1">8 回合</button>
+          </div>
+          <button id="btn-start" class="w-24 h-24 mt-4 rounded-full border-4 border-[#173858] bg-[#ffd34f] text-4xl shadow-[0_8px_0_#173858] flex items-center justify-center font-black active:translate-y-1 hover:scale-105 transition-transform">
+            ▶
+          </button>
+        </div>
+      </div>
+
+      <!-- Overlay 2: Word Pair Challenge (Discrimination & Pronunciation) -->
+      <div id="overlay-challenge" class="overlay hidden">
+        <div class="flex flex-col items-center w-full max-w-lg">
+          
+          <!-- Phase Title Banner -->
+          <div id="challenge-phase-title" class="text-2xl font-black mb-3 text-[#173858]">
+            請選擇含有 /-m/ 尾音的字
+          </div>
+
+          <!-- Random Emojis Progress Track -->
+          <div id="progress-track" class="flex gap-3 mb-5">
+            <!-- Dynamically populated 5 emojis -->
+          </div>
+
+          <!-- Cards Area -->
+          <div id="cards-container" class="flex justify-center gap-6 mb-6">
+            <!-- Left Card -->
+            <button id="card-left" class="word-card">
+              <span id="card-left-pic" class="text-5xl mb-2">🧭</span>
+              <span id="card-left-word" class="text-6xl font-black">南</span>
+            </button>
+            
+            <!-- Right Card -->
+            <button id="card-right" class="word-card n-card">
+              <span id="card-right-pic" class="text-5xl mb-2">🤯</span>
+              <span id="card-right-word" class="text-6xl font-black">難</span>
+            </button>
+          </div>
+
+          <!-- Parent Rating Controls (Pronunciation Phase Only) -->
+          <div id="parent-judges" class="hidden flex justify-center items-center gap-8 w-full mt-2">
+            <button id="btn-judge-yes" class="w-20 h-20 rounded-full border-4 border-[#173858] bg-[#4cdb93] text-white text-5xl shadow-[0_6px_0_#173858] flex items-center justify-center active:translate-y-1 active:shadow-[0_2px_0_#173858] transition-all">
+              ✔
+            </button>
+            <button id="btn-judge-no" class="w-20 h-20 rounded-full border-4 border-[#173858] bg-[#ff4d4d] text-white text-4xl shadow-[0_6px_0_#173858] flex items-center justify-center active:translate-y-1 active:shadow-[0_2px_0_#173858] transition-all">
+              ❌
+            </button>
+          </div>
+
+        </div>
+      </div>
+
+      <!-- Overlay 3: Paused -->
+      <div id="overlay-paused" class="overlay hidden z-40">
+        <button id="btn-resume" class="w-24 h-24 rounded-full border-4 border-[#173858] bg-[#ffd34f] text-4xl shadow-[0_8px_0_#173858] flex items-center justify-center font-black active:translate-y-1">
+          ▶
+        </button>
+      </div>
+
+      <!-- Overlay 4: Final Results -->
+      <div id="overlay-results" class="overlay hidden z-40">
+        <div class="flex flex-col items-center w-full max-w-md bg-white border-4 border-[#173858] rounded-3xl p-6 shadow-[0_10px_0_#173858]">
+          <div id="end-icon" class="text-6xl mb-2">🏆</div>
+          
+          <div class="grid grid-cols-2 gap-3 w-full mb-4 text-center">
+            <div class="border-3 border-[#173858] rounded-2xl p-3 bg-[#eef9ff]">
+              <p class="text-sm font-bold text-gray-600">辨別準確度</p>
+              <p id="res-accuracy-discrim" class="text-2xl font-black text-[#173858]">0%</p>
+            </div>
+            <div class="border-3 border-[#173858] rounded-2xl p-3 bg-[#eef9ff]">
+              <p class="text-sm font-bold text-gray-600">發音準確度</p>
+              <p id="res-accuracy-pron" class="text-2xl font-black text-[#173858]">—</p>
+            </div>
+            <div class="border-3 border-[#173858] rounded-2xl p-3 bg-[#eef9ff]">
+              <p class="text-sm font-bold text-gray-600">總分</p>
+              <p id="res-score" class="text-2xl font-black text-[#173858]">0</p>
+            </div>
+            <div class="border-3 border-[#173858] rounded-2xl p-3 bg-[#eef9ff]">
+              <p class="text-sm font-bold text-gray-600">Bonus 次數</p>
+              <p id="res-bonuses" class="text-2xl font-black text-[#173858]">0</p>
+            </div>
+          </div>
+
+          <p class="text-lg font-bold mb-4">完成進度：<span id="res-completion" class="font-black">0 / 10</span></p>
+
+          <button id="btn-restart" class="btn-action bg-[#4cdb93] text-[#173858] w-full">
+            再玩一次
+          </button>
+        </div>
+      </div>
+
+    </section>
+  </main>
+
+  <script>
+    // --- 15 Minimal Pair Word Database ---
+    const WORD_PAIRS = [
+      { m: { word: '南', pic: '🧭' }, n: { word: '難', pic: '🤯' } },
+      { m: { word: '尋', pic: '🔍' }, n: { word: '塵', pic: '🌫️' } },
+      { m: { word: '感', pic: '💗' }, n: { word: '緊', pic: '🪢' } },
+      { m: { word: '心', pic: '❤️' }, n: { word: '新', pic: '✨' } },
+      { m: { word: '森', pic: '🌲' }, n: { word: '新', pic: '✨' } },
+      { m: { word: '浸', pic: '🛁' }, n: { word: '震', pic: '〰️' } },
+      { m: { word: '藍', pic: '🔵' }, n: { word: '欄', pic: '🚧' } },
+      { m: { word: '參', pic: '🖼️' }, n: { word: '餐', pic: '🍽️' } },
+      { m: { word: '三', pic: '3️⃣' }, n: { word: '山', pic: '⛰️' } },
+      { m: { word: '擔', pic: '😟' }, n: { word: '單', pic: '🧾' } },
+      { m: { word: '減', pic: '➖' }, n: { word: '梘', pic: '🧼' } },
+      { m: { word: '橄', pic: '🫒' }, n: { word: '間', pic: '✍️' } },
+      { m: { word: '探', pic: '🕵🏻' }, n: { word: '嘆', pic: '😮‍💨' } },
+      { m: { word: '慘', pic: '😢' }, n: { word: '鏟', pic: '🪏' } },
+      { m: { word: '貪', pic: '🤑' }, n: { word: '灘', pic: '🏖️' } }
+    ];
+
+    const EMOJI_POOL = ['🤩', '👽', '🎃', '🎈', '🏆', '⭐'];
+
+    // Helper functions
+    const $ = id => document.getElementById(id);
+    const shuffle = array => {
+      let arr = [...array];
+      for (let i = arr.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [arr[i], arr[j]] = [arr[j], arr[i]];
+      }
+      return arr;
+    };
+
+    // --- Audio Synthesizer (No external MP3 files needed) ---
+    let audioCtx = null;
+    let musicOn = true;
+    let selectedTotalRounds = 5; // 預設 5 回合
+
+    function selectRounds(rounds) {
+      selectedTotalRounds = rounds;
+      [3, 5, 8].forEach(r => {
+        const btn = $(`btn-round-${r}`);
+        if (r === rounds) {
+          btn.classList.remove('opacity-50');
+          btn.classList.add('scale-110');
+        } else {
+          btn.classList.add('opacity-50');
+          btn.classList.remove('scale-110');
+        }
+      });
+      initAudio();
+    }
+
+    function initAudio() {
+      if (!audioCtx) {
+        const AudioContext = window.AudioContext || window.webkitAudioContext;
+        if (AudioContext) audioCtx = new AudioContext();
+      }
+      if (audioCtx && audioCtx.state === 'suspended') {
+        audioCtx.resume();
+      }
+    }
+
+    function playTone(freq, duration = 0.15, type = 'sine', volume = 0.05) {
+      if (!musicOn || !audioCtx || audioCtx.state !== 'running') return;
+      try {
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.type = type;
+        osc.frequency.value = freq;
+        gain.gain.setValueAtTime(volume, audioCtx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.0001, audioCtx.currentTime + duration);
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+        osc.start();
+        osc.stop(audioCtx.currentTime + duration);
+      } catch (e) {}
+    }
+
+    function playSound(type) {
+      if (type === 'catch') playTone(587, 0.12, 'triangle', 0.06);
+      else if (type === 'bomb') playTone(120, 0.3, 'sawtooth', 0.08);
+      else if (type === 'correct') {
+        playTone(523, 0.1, 'sine', 0.06);
+        setTimeout(() => playTone(659, 0.1, 'sine', 0.06), 80);
+        setTimeout(() => playTone(784, 0.2, 'sine', 0.06), 160);
+      } else if (type === 'wrong') {
+        playTone(220, 0.15, 'square', 0.06);
+        setTimeout(() => playTone(180, 0.25, 'square', 0.06), 120);
+      } else if (type === 'bonus') {
+        playTone(523, 0.1, 'triangle', 0.07);
+        setTimeout(() => playTone(659, 0.1, 'triangle', 0.07), 80);
+        setTimeout(() => playTone(784, 0.1, 'triangle', 0.07), 160);
+        setTimeout(() => playTone(1046, 0.25, 'triangle', 0.07), 240);
+      }
+    }
+
+    let gameState = {
+      round: 1,
+      totalRounds: 5,
+      lives: 3,
+      score: 0,
+      streak: 0,
+      bonuses: 0,
+      completedRounds: 0,
+      
+      // Accuracy stats
+      discrimCorrect: 0,
+      discrimTotal: 0,
+      pronCorrect: 0,
+      pronTotal: 0,
+
+      // Catch phase
+      phase: 'start', // 'start', 'catch', 'identify', 'reading', 'paused', 'end'
+      basketX: 0.5,
+      caughtPumpkins: 0,
+      targetPumpkins: 2,
+      fallingObjects: [],
+      spawnTimer: 0,
+      immuneTimer: 0,
+
+      // Word card phase
+      roundPairs: [],
+      attempt: 0,
+      roundDiscrimCorrect: 0,
+      currentEmojis: [],
+      leftIsM: true,
+      
+      paused: false
+    };
+
+    let keysPressed = new Set();
+    let animFrameId = null;
+    let lastTime = 0;
+
+    function updateHeaderStats() {
+      $('round-disp').textContent = `${gameState.round} / ${gameState.totalRounds}`;
+      $('score-disp').textContent = gameState.score;
+      $('lives-disp').textContent = '❤️'.repeat(Math.max(0, gameState.lives)) + '🤍'.repeat(Math.max(0, 3 - gameState.lives));
+    }
+
+    function updateHarvestSlots() {
+      const container = $('harvest-slots');
+      container.innerHTML = '';
+      for (let i = 0; i < gameState.targetPumpkins; i++) {
+        const span = document.createElement('span');
+        span.textContent = '🎃';
+        if (i < gameState.caughtPumpkins) {
+          span.className = 'pop-anim';
+        } else {
+          span.className = 'opacity-30 grayscale';
+        }
+        container.appendChild(span);
+      }
+    }
+
+    function startRound() {
+      gameState.phase = 'catch';
+      gameState.caughtPumpkins = 0;
+      gameState.targetPumpkins = 2;
+      gameState.spawnTimer = 0.3;
+      gameState.fallingObjects.forEach(obj => obj.el.remove());
+      gameState.fallingObjects = [];
+      
+      updateHarvestSlots();
+      updateHeaderStats();
+
+      $('overlay-start').classList.add('hidden');
+      $('overlay-challenge').classList.add('hidden');
+      $('overlay-paused').classList.add('hidden');
+      $('overlay-results').classList.add('hidden');
+      
+      $('basket').style.left = (gameState.basketX * 100) + '%';
+    }
+
+    function spawnFallingItem() {
+      if (gameState.phase !== 'catch') return;
+      
+      const isBomb = Math.random() < 0.25;
+      const el = document.createElement('div');
+      el.className = 'falling-item';
+      el.textContent = isBomb ? '💣' : '🎃';
+      $('field').appendChild(el);
+
+      gameState.fallingObjects.push({
+        el: el,
+        isBomb: isBomb,
+        x: 0.1 + Math.random() * 0.8,
+        y: -40,
+        speed: 130 + (gameState.round * 20)
+      });
+    }
+
+    function showToast(id) {
+      const toast = $(id);
+      toast.classList.remove('hidden');
+      setTimeout(() => toast.classList.add('hidden'), 700);
+    }
+
+    function triggerBonus() {
+      gameState.bonuses++;
+      gameState.score += 150;
+      playSound('bonus');
+      showToast('toast-bonus');
+    }
+
+    function startChallengePhase() {
+      gameState.phase = 'identify';
+      gameState.attempt = 0;
+      gameState.roundDiscrimCorrect = 0;
+      
+      // Select 5 word pairs randomly for this round's 5 attempts
+      gameState.roundPairs = shuffle(WORD_PAIRS).slice(0, 5);
+      
+      // Pick 5 random emojis for progress tracker
+      gameState.currentEmojis = Array.from({ length: 5 }, () => EMOJI_POOL[Math.floor(Math.random() * EMOJI_POOL.length)]);
+      
+      setupCardAttempt();
+      $('overlay-challenge').classList.remove('hidden');
+    }
+
+    function setupCardAttempt() {
+      const isIdentify = gameState.phase === 'identify';
+      
+      // Header Title
+      $('challenge-phase-title').textContent = isIdentify 
+        ? "請點擊含有 /-m/ 尾音的字卡" 
+        : "請學生朗讀此字 5 次（家長評分）";
+
+      // Render Progress Track Emojis
+      const track = $('progress-track');
+      track.innerHTML = '';
+      gameState.currentEmojis.forEach((emoji, idx) => {
+        const span = document.createElement('span');
+        span.className = `progress-emoji ${idx <= gameState.attempt ? 'active' : ''}`;
+        span.textContent = emoji;
+        track.appendChild(span);
+      });
+
+      const currentPair = gameState.roundPairs[gameState.attempt % gameState.roundPairs.length];
+      
+      if (isIdentify) {
+        // Discrimination: Randomize Left/Right position
+        gameState.leftIsM = Math.random() < 0.5;
+        const leftData = gameState.leftIsM ? currentPair.m : currentPair.n;
+        const rightData = gameState.leftIsM ? currentPair.n : currentPair.m;
+
+        $('card-left').className = `word-card ${gameState.leftIsM ? '' : 'n-card'}`;
+        $('card-left-pic').textContent = leftData.pic;
+        $('card-left-word').textContent = leftData.word;
+        $('card-left').style.display = 'flex';
+
+        $('card-right').className = `word-card ${gameState.leftIsM ? 'n-card' : ''}`;
+        $('card-right-pic').textContent = rightData.pic;
+        $('card-right-word').textContent = rightData.word;
+        $('card-right').style.display = 'flex';
+
+        $('parent-judges').classList.add('hidden');
+      } else {
+        // Pronunciation: Remove /-n/ card, show ONLY /-m/ card in center
+        $('card-left').className = 'word-card';
+        $('card-left-pic').textContent = currentPair.m.pic;
+        $('card-left-word').textContent = currentPair.m.word;
+        $('card-left').style.display = 'flex';
+
+        $('card-right').style.display = 'none';
+
+        $('parent-judges').classList.remove('hidden');
+      }
+    }
+
+    function handleCardClick(isLeft) {
+      if (gameState.phase !== 'identify') return;
+
+      const pickedCorrect = (isLeft && gameState.leftIsM) || (!isLeft && !gameState.leftIsM);
+      
+      gameState.discrimTotal++;
+      if (pickedCorrect) {
+        gameState.discrimCorrect++;
+        gameState.roundDiscrimCorrect++;
+        gameState.score += 100;
+        gameState.streak++;
+        playSound('correct');
+        showToast('toast-good');
+
+        if (gameState.streak % 3 === 0) {
+          triggerBonus();
+        }
+      } else {
+        gameState.streak = 0;
+        playSound('wrong');
+        showToast('toast-bad');
+      }
+      
+      updateHeaderStats();
+
+      // Advance attempt
+      gameState.attempt++;
+      if (gameState.attempt < 5) {
+        setTimeout(setupCardAttempt, 600);
+      } else {
+        // End of 5 discrimination attempts
+        setTimeout(() => {
+          if (gameState.roundDiscrimCorrect >= 4) {
+            // Transition to Pronunciation Phase
+            gameState.phase = 'reading';
+            gameState.attempt = 0;
+            gameState.currentEmojis = Array.from({ length: 5 }, () => EMOJI_POOL[Math.floor(Math.random() * EMOJI_POOL.length)]);
+            setupCardAttempt();
+          } else {
+            // Failed discrimination benchmark (< 4 correct), move to next round
+            finishRound();
+          }
+        }, 600);
+      }
+    }
+
+    function handleParentJudge(isCorrect) {
+      if (gameState.phase !== 'reading') return;
+
+      gameState.pronTotal++;
+      if (isCorrect) {
+        gameState.pronCorrect++;
+        gameState.score += 100;
+        playSound('correct');
+        showToast('toast-good');
+      } else {
+        playSound('wrong');
+        showToast('toast-bad');
+      }
+
+      updateHeaderStats();
+
+      gameState.attempt++;
+      if (gameState.attempt < 5) {
+        setupCardAttempt();
+      } else {
+        finishRound();
+      }
+    }
+
+    function finishRound() {
+      gameState.completedRounds++;
+      if (gameState.round < gameState.totalRounds && gameState.lives > 0) {
+        gameState.round++;
+        startRound();
+      } else {
+        endGame();
+      }
+    }
+
+    function endGame() {
+      gameState.phase = 'end';
+      $('overlay-challenge').classList.add('hidden');
+      $('overlay-results').classList.remove('hidden');
+
+      $('end-icon').textContent = gameState.lives > 0 ? '🏆' : '🧺';
+      
+      const discrimAcc = gameState.discrimTotal > 0 ? Math.round((gameState.discrimCorrect / gameState.discrimTotal) * 100) + '%' : '0%';
+      const pronAcc = gameState.pronTotal > 0 ? Math.round((gameState.pronCorrect / gameState.pronTotal) * 100) + '%' : '—';
+
+      $('res-accuracy-discrim').textContent = discrimAcc;
+      $('res-accuracy-pron').textContent = pronAcc;
+      $('res-score').textContent = gameState.score;
+      $('res-bonuses').textContent = gameState.bonuses;
+      $('res-completion').textContent = `${gameState.completedRounds} / ${gameState.totalRounds}`;
+    }
+
+    function gameLoop(time) {
+      if (!lastTime) lastTime = time;
+      const dt = Math.min((time - lastTime) / 1000, 0.05);
+      lastTime = time;
+
+      if (gameState.phase === 'catch' && !gameState.paused) {
+        // Update Basket Physics
+        let moveDir = 0;
+        if (keysPressed.has('ArrowLeft')) moveDir -= 1;
+        if (keysPressed.has('ArrowRight')) moveDir += 1;
+
+        if (moveDir !== 0) {
+          gameState.basketX = Math.max(0.08, Math.min(0.92, gameState.basketX + moveDir * dt * 0.9));
+          $('basket').style.left = (gameState.basketX * 100) + '%';
+        }
+
+        // Spawn Items
+        gameState.spawnTimer -= dt;
+        if (gameState.spawnTimer <= 0) {
+          spawnFallingItem();
+          gameState.spawnTimer = Math.max(0.45, 1.0 - (gameState.round * 0.05));
+        }
+
+        // Update Falling Items
+        const fieldWidth = $('field').clientWidth;
+        const fieldHeight = $('field').clientHeight;
+
+        for (let i = gameState.fallingObjects.length - 1; i >= 0; i--) {
+          const item = gameState.fallingObjects[i];
+          item.y += item.speed * dt;
+          item.el.style.left = `calc(${item.x * 100}% - 25px)`;
+          item.el.style.top = item.y + 'px';
+
+          // Collision detection
+          const isHit = item.y + 40 >= fieldHeight - 80 && item.y < fieldHeight - 20 &&
+                        Math.abs(item.x - gameState.basketX) * fieldWidth < 55;
+
+          if (isHit) {
+            item.el.remove();
+            gameState.fallingObjects.splice(i, 1);
+
+            if (item.isBomb) {
+              playSound('bomb');
+              gameState.lives--;
+              updateHeaderStats();
+              $('arena').classList.remove('blast');
+              void $('arena').offsetWidth; // Force reflow
+              $('arena').classList.add('blast');
+
+              if (gameState.lives <= 0) {
+                endGame();
+                break;
+              }
+            } else {
+              playSound('catch');
+              gameState.caughtPumpkins++;
+              gameState.score += 10;
+              updateHeaderStats();
+              updateHarvestSlots();
+
+              if (gameState.caughtPumpkins >= gameState.targetPumpkins) {
+                startChallengePhase();
+                break;
+              }
+            }
+          } else if (item.y > fieldHeight) {
+            item.el.remove();
+            gameState.fallingObjects.splice(i, 1);
+          }
+        }
+      }
+
+      animFrameId = requestAnimationFrame(gameLoop);
+    }
+
+    function setupEventListeners() {
+      // Audio trigger on user touch/click
+      window.addEventListener('pointerdown', initAudio, { once: true });
+
+      // Start Game
+      $('btn-start').onclick = () => {
+        initAudio();
+        resetGame();
+      };
+
+      // Round Selection
+      $('btn-round-3').onclick = () => selectRounds(3);
+      $('btn-round-5').onclick = () => selectRounds(5);
+      $('btn-round-8').onclick = () => selectRounds(8);
+
+      // Restart Game
+      $('btn-restart').onclick = () => {
+        $('overlay-results').classList.add('hidden');
+        $('overlay-start').classList.remove('hidden');
+        gameState.phase = 'start';
+      };
+
+      // Music Toggle
+      $('btn-music').onclick = () => {
+        initAudio();
+        musicOn = !musicOn;
+        $('btn-music').textContent = musicOn ? '🎵' : '🔇';
+      };
+
+      // Pause / Resume
+      $('btn-pause').onclick = () => togglePause(true);
+      $('btn-resume').onclick = () => togglePause(false);
+
+      // Card Clicks
+      $('card-left').onclick = () => handleCardClick(true);
+      $('card-right').onclick = () => handleCardClick(false);
+
+      // Parent Judges
+      $('btn-judge-yes').onclick = () => handleParentJudge(true);
+      $('btn-judge-no').onclick = () => handleParentJudge(false);
+
+      // Touch / Drag Basket Control
+      const field = $('field');
+      const handlePointer = e => {
+        if (gameState.phase !== 'catch' || gameState.paused) return;
+        const rect = field.getBoundingClientRect();
+        const relativeX = (e.clientX - rect.left) / rect.width;
+        gameState.basketX = Math.max(0.08, Math.min(0.92, relativeX));
+        $('basket').style.left = (gameState.basketX * 100) + '%';
+      };
+
+      field.addEventListener('pointerdown', e => {
+        field.setPointerCapture(e.pointerId);
+        handlePointer(e);
+      });
+      field.addEventListener('pointermove', e => {
+        if (field.hasPointerCapture(e.pointerId)) handlePointer(e);
+      });
+
+      // Keyboard Controls
+      window.addEventListener('keydown', e => {
+        if (['ArrowLeft', 'ArrowRight'].includes(e.key)) {
+          keysPressed.add(e.key);
+        }
+      });
+      window.addEventListener('keyup', e => {
+        keysPressed.delete(e.key);
+      });
+    }
+
+    function togglePause(pauseVal) {
+      if (gameState.phase === 'end' || gameState.phase === 'start') return;
+      gameState.paused = pauseVal;
+      $('overlay-paused').classList.toggle('hidden', !pauseVal);
+    }
+
+    function resetGame() {
+      gameState.round = 1;
+      gameState.totalRounds = selectedTotalRounds;
+      gameState.lives = 3;
+      gameState.score = 0;
+      gameState.streak = 0;
+      gameState.bonuses = 0;
+      gameState.completedRounds = 0;
+      gameState.discrimCorrect = 0;
+      gameState.discrimTotal = 0;
+      gameState.pronCorrect = 0;
+      gameState.pronTotal = 0;
+      gameState.paused = false;
+
+      startRound();
+    }
+
+    // Initialization on window load
+    window.onload = () => {
+      setupEventListeners();
+      animFrameId = requestAnimationFrame(gameLoop);
+    };
+  </script>
+</body>
+</html>
