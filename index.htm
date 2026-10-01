@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>南vs難尾音大挑戰</title>
+  <title>南/-m/及難/-n/尾音大挑戰</title>
   <!-- Tailwind CSS CDN -->
   <script src="https://cdn.tailwindcss.com"></script>
   <!-- Google Fonts -->
@@ -84,6 +84,13 @@
       0% { transform: scale(0.5); opacity: 0; }
       100% { transform: scale(1); opacity: 1; }
     }
+    .pop-center-anim {
+      animation: pop-center 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    }
+    @keyframes pop-center {
+      0% { transform: translateX(-50%) scale(0.5); opacity: 0; }
+      100% { transform: translateX(-50%) scale(1); opacity: 1; }
+    }
     .overlay {
       position: absolute;
       inset: 0;
@@ -97,7 +104,7 @@
     .word-card {
       border: 4px solid #173858;
       border-radius: 24px;
-      background: #ffd34f;
+      background: #ffe885;
       color: #173858;
       min-height: 200px;
       width: 200px;
@@ -110,7 +117,7 @@
       cursor: pointer;
     }
     .word-card.n-card {
-      background: #ff96b5;
+      background: #ff914d;
     }
     .word-card:active:not(:disabled) {
       transform: translateY(4px);
@@ -187,10 +194,8 @@
 
       <!-- Target Banner -->
       <div id="target-banner" class="absolute top-3 left-1/2 -translate-x-1/2 bg-white border-3 border-[#173858] rounded-2xl px-5 py-2 shadow-[0_4px_0_#173858] font-black text-xl z-10 flex items-center gap-3">
-        <span>接住 2 個南瓜</span>
+        <span>接住 <span id="target-count-disp">2</span> 個南瓜</span>
         <div id="harvest-slots" class="flex gap-2 text-2xl">
-          <span class="opacity-30 grayscale">🎃</span>
-          <span class="opacity-30 grayscale">🎃</span>
         </div>
       </div>
 
@@ -201,11 +206,11 @@
       <div id="basket">🧺</div>
 
       <!-- Floating Feedback Toast -->
-      <div id="toast-good" class="hidden absolute top-24 left-1/2 -translate-x-1/2 bg-[#4cdb93] text-white w-20 h-20 rounded-full flex items-center justify-center text-5xl font-black z-30 shadow-lg border-4 border-[#173858] pop-anim">
+      <div id="toast-good" class="hidden absolute top-24 left-1/2 -translate-x-1/2 bg-[#4cdb93] text-white w-20 h-20 rounded-full flex items-center justify-center text-5xl font-black z-30 shadow-lg border-4 border-[#173858] pop-center-anim">
         ✔
       </div>
-      <div id="toast-bad" class="hidden absolute top-24 left-1/2 -translate-x-1/2 bg-[#ff4d4d] text-white w-20 h-20 rounded-full flex items-center justify-center text-4xl font-black z-30 shadow-lg border-4 border-[#173858] pop-anim">
-        ✘
+      <div id="toast-bad" class="hidden absolute top-24 left-1/2 -translate-x-1/2 bg-[#ff4d4d] text-white w-20 h-20 rounded-full flex items-center justify-center text-4xl font-black z-30 shadow-lg border-4 border-[#173858] pop-center-anim">
+        ❌
       </div>
 
       <!-- Combo Bonus Floating Badge -->
@@ -234,7 +239,7 @@
           
           <!-- Phase Title Banner -->
           <div id="challenge-phase-title" class="text-2xl font-black mb-3 text-[#173858]">
-            請選擇含有 /-m/ 尾音的字
+            請選擇含有南 /-m/ 尾音的字
           </div>
 
           <!-- Random Emojis Progress Track -->
@@ -251,7 +256,7 @@
             </button>
             
             <!-- Right Card -->
-            <button id="card-right" class="word-card n-card">
+            <button id="card-right" class="word-card">
               <span id="card-right-pic" class="text-5xl mb-2">🤯</span>
               <span id="card-right-word" class="text-6xl font-black">難</span>
             </button>
@@ -471,7 +476,8 @@
     function startRound() {
       gameState.phase = 'catch';
       gameState.caughtPumpkins = 0;
-      gameState.targetPumpkins = 2;
+      gameState.targetPumpkins = Math.floor(Math.random() * 4) + 2; // 隨機 2 到 5 個
+      $('target-count-disp').textContent = gameState.targetPumpkins;
       gameState.spawnTimer = 0.3;
       gameState.fallingObjects.forEach(obj => obj.el.remove());
       gameState.fallingObjects = [];
@@ -559,12 +565,12 @@
         const leftData = gameState.leftIsM ? currentPair.m : currentPair.n;
         const rightData = gameState.leftIsM ? currentPair.n : currentPair.m;
 
-        $('card-left').className = `word-card ${gameState.leftIsM ? '' : 'n-card'}`;
+        $('card-left').className = 'word-card';
         $('card-left-pic').textContent = leftData.pic;
         $('card-left-word').textContent = leftData.word;
         $('card-left').style.display = 'flex';
 
-        $('card-right').className = `word-card ${gameState.leftIsM ? 'n-card' : ''}`;
+        $('card-right').className = 'word-card';
         $('card-right-pic').textContent = rightData.pic;
         $('card-right-word').textContent = rightData.word;
         $('card-right').style.display = 'flex';
